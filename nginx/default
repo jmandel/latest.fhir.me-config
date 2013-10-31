@@ -1,0 +1,100 @@
+server_names_hash_bucket_size  64;
+
+log_format client '$remote_addr - $remote_user $request_time $upstream_response_time '
+                  '[$time_local] "$request" $status $body_bytes_sent $request_body "$http_referer" '
+                  '"$http_user_agent" "$http_x_forwarded_for"';
+
+server {
+	listen 443;
+	server_name fhir.me;
+
+	ssl on;
+	ssl_certificate /etc/nginx/ssl/apps/chained.crt;
+	ssl_certificate_key /etc/nginx/ssl/apps/server.key;
+
+	rewrite	^	https://apps.fhir.me$request_uri? permanent;
+}
+
+server {
+	listen 80;
+	server_name ~^(?<before_tld>(api\.|secure-api\.|apps\.)?fhir)\.(us|net|me)$ ;
+	rewrite	^	https://$before_tld.me$request_uri? permanent;
+}
+
+server {
+	listen 80;
+	server_name latest.fhir.*;
+	index index.html index.htm;
+	location / {
+		root /home/fhir/docs;
+		try_files $uri $uri.html $uri/index.html;
+	}
+}
+
+server {
+	listen 443;
+	server_name apps.fhir.me;
+	index index.html index.htm;
+
+	ssl on;
+	ssl_certificate /etc/nginx/ssl/apps/chained.crt;
+	ssl_certificate_key /etc/nginx/ssl/apps/server.key;
+
+	location / {
+		root /home/fhir/fhir-starter/static;
+	}
+}
+
+
+upstream fhir {
+    server 127.0.0.1:3000;
+}
+
+
+upstream fhir-auth {
+    server 127.0.0.1:3001;
+}
+
+# the nginx server instance
+server {
+    server_name api.fhir.me;
+    listen 443;
+
+    ssl on;
+    ssl_certificate /etc/nginx/ssl/api/chained.crt;
+    ssl_certificate_key /etc/nginx/ssl/api/server.key;
+
+
+    location / {
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $http_host;
+      proxy_set_header X-NginX-Proxy true;
+
+      access_log /var/log/nginx/fhir_api_access.log client;
+      proxy_pass http://fhir;
+      proxy_redirect off;
+    }
+}
+
+server {
+    server_name secure-api.fhir.me;
+    listen 443;
+
+    ssl on;
+    ssl_certificate /etc/nginx/ssl/secure-api/chained.crt;
+    ssl_certificate_key /etc/nginx/ssl/secure-api/server.key;
+
+
+    location / {
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $http_host;
+      proxy_set_header X-NginX-Proxy true;
+
+      proxy_pass http://fhir-auth;
+      proxy_redirect off;
+    }
+}
+
+
