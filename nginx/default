@@ -9,15 +9,15 @@ server {
 	server_name fhir.me;
 
 	ssl on;
-	ssl_certificate /etc/nginx/ssl/apps/chained.crt;
-	ssl_certificate_key /etc/nginx/ssl/apps/server.key;
+	ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
+	ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
 
 	rewrite	^	https://apps.fhir.me$request_uri? permanent;
 }
 
 server {
 	listen 80;
-	server_name ~^(?<before_tld>(api\.|secure-api\.|apps\.)?fhir)\.(us|net|me)$ ;
+	server_name ~^(?<before_tld>(latest\.|api\.|secure-api\.|apps\.)?fhir)\.(us|net|me)$ ;
 	rewrite	^	https://$before_tld.me$request_uri? permanent;
 }
 
@@ -33,15 +33,64 @@ server {
 
 server {
 	listen 443;
+	server_name latest.fhir.me;
+
+	ssl on;
+	ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
+	ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
+
+	index index.html index.htm;
+	location / {
+		root /home/fhir/docs;
+		try_files $uri $uri.html $uri/index.html;
+	}
+}
+
+server {
+	listen 443;
 	server_name apps.fhir.me;
 	index index.html index.htm;
 
 	ssl on;
-	ssl_certificate /etc/nginx/ssl/apps/chained.crt;
-	ssl_certificate_key /etc/nginx/ssl/apps/server.key;
+	ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
+	ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
 
 	location / {
 		root /home/fhir/fhir-starter/static;
+	}
+}
+
+
+server {
+	listen 80;
+	server_name pilots.fhir.me;
+	index index.html index.htm;
+
+	location / {
+		root /home/fhir/static-registry-example;
+		add_header 'Access-Control-Allow-Origin' '*';
+		add_header 'Access-Control-Allow-Credentials' 'true';
+		add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+		add_header 'Access-Control-Allow-Headers' 'DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type';
+	}
+}
+
+
+server {
+	listen 443;
+	server_name pilots.fhir.me;
+	index index.html index.htm;
+
+	ssl on;
+	ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
+	ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
+
+	location / {
+		root /home/fhir/static-registry-example;
+		add_header 'Access-Control-Allow-Origin' '*';
+		add_header 'Access-Control-Allow-Credentials' 'true';
+		add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+		add_header 'Access-Control-Allow-Headers' 'DNT,X-Mx-ReqToken,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type';
 	}
 }
 
@@ -61,8 +110,8 @@ server {
     listen 443;
 
     ssl on;
-    ssl_certificate /etc/nginx/ssl/api/chained.crt;
-    ssl_certificate_key /etc/nginx/ssl/api/server.key;
+    ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
+    ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
 
 
     location / {
@@ -82,8 +131,8 @@ server {
     listen 443;
 
     ssl on;
-    ssl_certificate /etc/nginx/ssl/secure-api/chained.crt;
-    ssl_certificate_key /etc/nginx/ssl/secure-api/server.key;
+    ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
+    ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
 
 
     location / {
