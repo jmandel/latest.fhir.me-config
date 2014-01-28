@@ -17,9 +17,25 @@ server {
 
 server {
 	listen 80;
-	server_name ~^(?<before_tld>(latest\.|api\.|secure-api\.|apps\.)?fhir)\.(us|net|me)$ ;
+	server_name ~^(?<before_tld>(open-api\.|authorize\.|latest\.|api\.|apps\.)?fhir)\.(us|net|me)$ ;
 	rewrite	^	https://$before_tld.me$request_uri? permanent;
 }
+
+server {
+	listen 80;
+	server_name *.pickfor.us;
+    location / {
+      access_log /var/log/nginx/synonyms.log client;
+      proxy_pass http://synonyms;
+      proxy_redirect off;
+    }
+}
+
+upstream synonyms {
+    server 127.0.0.1:9000;
+}
+
+
 
 server {
 	listen 80;
@@ -95,13 +111,39 @@ server {
 }
 
 
+upstream oidc {
+    server 127.0.0.1:4000;
+}
+
 upstream fhir {
     server 127.0.0.1:3000;
 }
 
-
-upstream fhir-auth {
+upstream fhir-open {
     server 127.0.0.1:3001;
+}
+
+
+# the nginx server instance
+server {
+    server_name open-api.fhir.me;
+    listen 443;
+
+    ssl on;
+    ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
+    ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
+
+
+    location / {
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header Host $http_host;
+      proxy_set_header X-NginX-Proxy true;
+
+      access_log /var/log/nginx/fhir_open_api_access.log client;
+      proxy_pass http://fhir-open;
+      proxy_redirect off;
+    }
 }
 
 # the nginx server instance
@@ -126,8 +168,9 @@ server {
     }
 }
 
+
 server {
-    server_name secure-api.fhir.me;
+    server_name authorize.fhir.me;
     listen 443;
 
     ssl on;
@@ -141,9 +184,9 @@ server {
       proxy_set_header Host $http_host;
       proxy_set_header X-NginX-Proxy true;
 
-      proxy_pass http://fhir-auth;
+      access_log /var/log/nginx/fhir_api_access.log client;
+      proxy_pass http://oidc;
       proxy_redirect off;
     }
 }
-
 
