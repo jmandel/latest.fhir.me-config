@@ -35,6 +35,18 @@ upstream synonyms {
     server 127.0.0.1:9000;
 }
 
+upstream ccda-scorecard {
+    server 127.0.0.1:5000;
+}
+server {
+    listen 80;
+    server_name ccda-scorecard.smartplatforms.org;
+    location / {
+      access_log /var/log/nginx/ccda-scorecard.log client;
+      proxy_pass http://ccda-scorecard;
+      proxy_redirect off;
+    }
+}
 
 
 server {
