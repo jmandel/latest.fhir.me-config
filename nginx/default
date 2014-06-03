@@ -17,7 +17,7 @@ server {
 
 server {
 	listen 80;
-	server_name ~^(?<before_tld>(open-api\.|authorize\.|latest\.|api\.|apps\.)?fhir)\.(us|net|me)$ ;
+	server_name ~^(?<before_tld>(chats\.|open-api\.|authorize\.|latest\.|api\.|apps\.)?fhir)\.(us|net|me)$ ;
 	rewrite	^	https://$before_tld.me$request_uri? permanent;
 }
 
@@ -52,11 +52,7 @@ server {
 server {
 	listen 80;
 	server_name latest.fhir.*;
-	index index.html index.htm;
-	location / {
-		root /home/fhir/docs;
-		try_files $uri $uri.html $uri/index.html;
-	}
+	return 301 $scheme://hl7-fhir.github.io$request_uri;
 }
 
 server {
@@ -66,12 +62,7 @@ server {
 	ssl on;
 	ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
 	ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
-
-	index index.html index.htm;
-	location / {
-		root /home/fhir/docs;
-		try_files $uri $uri.html $uri/index.html;
-	}
+	return 301 $scheme://hl7-fhir.github.io$request_uri;
 }
 
 server {
@@ -85,6 +76,21 @@ server {
 
 	location / {
 		root /home/fhir/fhir-starter/static;
+	}
+}
+
+
+server {
+	listen 443;
+	server_name apps-himss-2014.fhir.me;
+	index index.html index.htm;
+
+	ssl on;
+	ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
+	ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
+
+	location / {
+		root /home/fhir/fhir-starter-himss-2014/static;
 	}
 }
 
@@ -200,5 +206,23 @@ server {
       proxy_pass http://oidc;
       proxy_redirect off;
     }
+}
+
+server {
+    server_name chats.fhir.me;
+    listen 443;
+
+    ssl on;
+    ssl_certificate /etc/nginx/ssl/wildcard/chained.crt;
+    ssl_certificate_key /etc/nginx/ssl/wildcard/server.key;
+
+    rewrite ^/browsable/(.*)/(.*)\.html$	/feeds/$1/$2.html	permanent;
+
+	location / {
+		root /home/fhir/skype_logs/static;
+               autoindex on;
+
+	}
+
 }
 
